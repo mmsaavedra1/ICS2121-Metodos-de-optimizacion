@@ -2,7 +2,7 @@
 
 Este es el repositorio oficial del curso en donde encontrarán todos los scripts de la aplicación de la teoría vista con el profesor en clases. Dentro de cada carpeta se encuentra un archivo .pdf que contiene las instrucciones de ejecución de cada script.
 
-¡Si no sabes usar github, para obtener el contenido del repositorio solamente haz click en el botón verde llamado "CODE" arriba y guardas en formato .zip!
+¡Si no sabes usar github, para obtener el contenido del repositorio solamente haz click en el botón verde de arriba llamado "CODE" y guardas en formato .zip!
 
 
 ### Requisitos 💾📀
