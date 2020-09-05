@@ -121,8 +121,8 @@ def newton(X, Y, var_alfa_inicial, var_beta_inicial, epsilon, iteracion_maxima):
         # 5º paso del algoritmo: Se actualiza el valor de x para la siguiente
         # iteracion del algoritmo
         """ IMPLEMENTADO """
-        var_alfa = var_alfa + (lambda_/110)*direccion_descenso[:5]
-        var_beta = var_beta + (lambda_/110)*direccion_descenso[5:]
+        var_alfa = var_alfa + lambda_*direccion_descenso[:5]
+        var_beta = var_beta + lambda_*direccion_descenso[5:]
         iteracion += 1
         iteraciones.append(iteracion)
         """ IMPLEMENTADO """

@@ -39,9 +39,7 @@ def subrutina(X, Y, var_alfa, var_beta):
     Esta funcion debe retornar el valor de la funcion, su gradiente segun
     la iteracion estudiada.
     """
-    # Dimensiones de la matriz ingresada
-    m, k = (55, 5)
-
+   
     """ IMPLEMENTADO """
     # Se crean las variables que ayudan a definir la funcion principal
     # para este caso el vector que solo posee valor en coordenada n
@@ -106,7 +104,7 @@ def gradiente(X, Y, var_alfa_inicial, var_beta_inicial, epsilon, iteracion_maxim
             # Hagamos Linesearch es más simple
             """ IMPLEMENTADO """
             variables = np.concatenate((var_alfa, var_beta))
-            lambda_ = fminbound(funcion_linesearch, -1, 10, args=(X, Y, variables, direccion_descenso))
+            lambda_ = fminbound(funcion_linesearch, 0, 1, args=(X, Y, variables, direccion_descenso))
             
             """ IMPLEMENTADO """
 
@@ -123,8 +121,8 @@ def gradiente(X, Y, var_alfa_inicial, var_beta_inicial, epsilon, iteracion_maxim
         # 5º paso del algoritmo: Se actualiza el valor de x para la siguiente
         # iteracion del algoritmo
         """ IMPLEMENTADO """
-        var_alfa = var_alfa + (lambda_/110)*direccion_descenso[:5]
-        var_beta = var_beta + (lambda_/110)*direccion_descenso[5:]
+        var_alfa = var_alfa + lambda_*direccion_descenso[:5]
+        var_beta = var_beta + lambda_*direccion_descenso[5:]
         iteracion += 1
         """ IMPLEMENTADO """
     
