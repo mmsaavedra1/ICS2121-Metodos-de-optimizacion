@@ -5,9 +5,15 @@ __email__ = "mmsaavedra1@ing.puc.cl"
 # Se importan los modulos de python
 import numpy as np
 import scipy.linalg
+import time
+import matplotlib
+import matplotlib.pyplot as plt
+
+from pprint import pprint
+
 
 # Se importan los modulos creados por el usuario
-from parametros import *
+from leerExcel import importar_excel
 
 
 def timer(funcion):
@@ -42,13 +48,17 @@ def LASSO_FISTA(A, b, tau, iteracion_maxima):
         - valor_optimo : Valor optimo del problema a minimizar.
         - xk : Vector solucion del problema de k iteraciones."""
 
-    # Se setean las dimensiones
-    m, n = A.shape
+    """ IMPLEMENTADO """
+    errores = list()
+    """ IMPLEMENTADO """
 
+    m, n = A.shape
 
     # Se setean las condiciones iniciales, junto a los vectores que almacenand
     # informacion de la iteracion k, k-1, k-2, respectivamente.
     xk = np.zeros((n, 1))
+    print(xk)
+    quit()
 
 
     # Se setea el segundo punto de sucesion (que le otorga el caracter de acelerado)
@@ -58,8 +68,6 @@ def LASSO_FISTA(A, b, tau, iteracion_maxima):
     # La sucesion thetak se setea simplemente como 1 y se modifica en cada iteración (ver el código))
     thetak = 1
 
-    # Se setean el angulo que se forma entre las soluciones
-    angulo = 0
 
     # Estimacion del valor de R (radio) y L (connstante de Lipschitz)
     # segun teoria vista en clases
@@ -102,8 +110,12 @@ def LASSO_FISTA(A, b, tau, iteracion_maxima):
         # 7º Se calcula el error (segun norma infito de b) para mostrar en pantalla.
         error = np.linalg.norm(np.dot(A, xk) - b)/norma_b
 
-        n1 = np.linalg.norm(xk, 1)
-        
+        # 8º Se guarda el error para ser graficado despues
+        """ IMPLEMENTADO """
+        errores.append(error)
+        """ IMPLEMENTADO """
+
+        n1 = np.linalg.norm(xk, 1)        
 
          # La rutina de FISTA muestra en pantalla para cada iteracion:
         # nº de iteracion, valor de la funcion evaluada en el x de la iteracion,
@@ -112,17 +124,32 @@ def LASSO_FISTA(A, b, tau, iteracion_maxima):
 #        print(f"{retorno_en_pantalla[0]: ^12d}{retorno_en_pantalla[1]: ^12f} {retorno_en_pantalla[2]: ^12f} {retorno_en_pantalla[3]: ^12f}")
         print("%12.6f %12.6f %12.6f %12.6f" % (retorno_en_pantalla[0],retorno_en_pantalla[1],retorno_en_pantalla[2],retorno_en_pantalla[3]))
 
-    return xk
+    return xk, errores
 
 if __name__ == '__main__':
+    """ IMPLEMENTADO """
     # Esto es para que simepre se generen los mismos numeros aleatorios
     np.random.seed(1000)
 
-    tau = 0.5
-    iteracion_maxima = 100
+    # Seteo de datos estaticos para el metodo
+    X, Y = importar_excel()
+    iteracion_maxima = 5000 # Aqui se debe ir cambiando el valor para el analisis
+    tau = 0.000000001       # Aqui se debe ir cambiando el valor para el analisis
     
-    A, b = generar_datos(10, 50)
+    xsol, errores = LASSO_FISTA(np.array(X), np.array(Y), tau, iteracion_maxima)
     
-    xsol = LASSO_FISTA(A, b, tau, iteracion_maxima)
-    
+    """ IMPLEMENTADO """
+    import matplotlib
+    import matplotlib.pyplot as plt
 
+
+    fig, ax = plt.subplots()
+    ax.plot(range(iteracion_maxima), errores)
+
+    ax.set(xlabel='Iteracion', ylabel='Error',
+        title='Análisis de convergencia del error')
+    ax.grid()
+
+    fig.savefig("[FISTA] Convergencia del error.png")
+    plt.show()
+    """ IMPLEMENTADO """

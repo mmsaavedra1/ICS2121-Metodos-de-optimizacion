@@ -1,13 +1,10 @@
-__author__ = "Moises Saavedra Caceres"
-__email__ = "mmsaavedra1@ing.puc.cl"
+#!/usr/bin/python
 
-
-# Se importan los modulos de python
+from gurobipy import *
 import numpy as np
 import scipy.linalg
 
-# Se importan los modulos creados por el usuario
-from parametros import *
+from leerExcel import importar_excel
 
 
 def timer(funcion):
@@ -25,17 +22,16 @@ def timer(funcion):
         return resultado
     return inner
 
-def LASSO_FISTA(A, b, tau, iteracion_maxima):
+def FW(A, b, rho, iteracion_maxima):
     """
     Esta funcion recibe como input una matriz A y un vector b. Se busca resolver
-    el problema de regulacion L1 con un parametro tau y haciendo un numero maximo
-    de iteraciones definidas por el usuario, mediante el metodo del subgradiente.
+    el problema de regulacion L1 con un parametro rho, en la formulación
+    auxiliar para usar el algoritmo de Frank-Wolfe.
 
     Su entrada posee:
         - A : Matriz de m muestras (filas) de cada variable n (columnas).
         - b : Matriz de m muestras obtenidas que depende de las n variables.
-        - tau: Escalar que entrega significancia a las variables o entrega
-               significancia al error del modelo (trade-off).
+        - rho: Escalar que limita ||x||_1.
         - iteracion_maxima : Numero maximo de iteraciones a realizar.
 
     Su salida es:
@@ -44,85 +40,107 @@ def LASSO_FISTA(A, b, tau, iteracion_maxima):
 
     # Se setean las dimensiones
     m, n = A.shape
+    N = range(n)
+    
+    norma_b = np.linalg.norm(b)
 
-
+    # Se crea ek modelo lineal y se setean las variables y restricciones
+    
+    fw = Model("PL auxiliar de Frank-Wolfe")
+    
+    fw.setParam(GRB.Param.OutputFlag, 0)
+    
+    # variables
+    y = fw.addVars(N,lb=-GRB.INFINITY,ub=GRB.INFINITY)
+    z = fw.addVars(N,lb=0,ub=GRB.INFINITY)
+    
+    # Restricciones
+    fw.addConstr(quicksum(z[j] for j in N) <= rho)
+    fw.addConstrs((-z[j] <= y[j]) for j in N)
+    fw.addConstrs((y[j] <= z[j]) for j in N)
+    
     # Se setean las condiciones iniciales, junto a los vectores que almacenand
     # informacion de la iteracion k, k-1, k-2, respectivamente.
     xk = np.zeros((n, 1))
 
 
-    # Se setea el segundo punto de sucesion (que le otorga el caracter de acelerado)
-    zk = xk
-
-
     # La sucesion thetak se setea simplemente como 1 y se modifica en cada iteración (ver el código))
     thetak = 1
 
-    # Se setean el angulo que se forma entre las soluciones
-    angulo = 0
-
-    # Estimacion del valor de R (radio) y L (connstante de Lipschitz)
-    # segun teoria vista en clases
-    R = np.sqrt(np.linalg.norm(np.linalg.inv(np.dot(A, np.transpose(A)))))*np.linalg.norm(np.dot(np.transpose(A), b))
-    L = tau*np.sqrt(n) + np.linalg.norm(np.dot(A, np.transpose(A)))*R + np.linalg.norm(np.dot(np.transpose(A), b))
 
     # Se calcula el valor optimo actual en la iteracion 0
-    valor_optimo = tau*np.linalg.norm(xk, 1) + 0.5*np.linalg.norm(np.dot(A, xk) - b)**2
+    valor_optimo = np.linalg.norm(np.dot(A, xk) - b)**2
 
-    # Se calcula la norma inifinito de b
-    norma_b = np.linalg.norm(b)
 
     # Se despliega el mensaje en pantalla
     print("\n\n**********    METODO FISTA    *********\n")
     print("ITERACION     VALOR OBJ      ERROR AJUSTE  ||x||_1")
 
+    errores = list()
+
     # Se comienza el ciclo de iteraciones
     for iteracion in range(iteracion_maxima):
-        # 1º Vector que se evalua en el gradiente para el paso xk+1
-        yk = (1-thetak)*xk + thetak*zk
+        # Se determina el gradiente en la iteración actual.
 
-        # 2º Se actualizan los valores de almacenamiento
+        grad =  2*np.dot(np.transpose(A), np.dot(A, xk) - b) 
 
+        # Se actualiza la función objetivo del problema lineal
+        fw.setObjective(sum((grad[j,0]*y[j]) for j in N), GRB.MINIMIZE)
+        # Se resuelve
+        fw.optimize()
+        # 5º Se actualiza la sucesion thetak 
 
-        # 3º Se crea el paso zk+1
-        zk = zk - (2*np.dot(np.transpose(A), np.dot(A, yk) - b) + tau*np.sign(yk))/(thetak*L)
-
-        # 4º Se crea el paso xk+1
-        xk = (1 - thetak)*xk + thetak*zk
-
-        # 5º Se actualiza la sucesion thetak se crean dos sucesiones para thethak
-        # puedes testear cada una comentando la otra linea
-
-        #thetak = 2/(1+np.sqrt(1+4/(thetak**2)))
         thetak = 2/(2+iteracion)
 
+        # Se actualiza el punto solución actual
+        
+        for j in N:
+            xk[j] = xk[j] + thetak*(y[j].X - xk[j])
+            
         # 6º Se actualiza el valor objetivo
-        valor_optimo = tau*np.linalg.norm(xk, 1) + 0.5*np.linalg.norm(np.dot(A, xk) - b)**2
+        valor_optimo = np.linalg.norm(np.dot(A, xk) - b)**2
 
         # 7º Se calcula el error (segun norma infito de b) para mostrar en pantalla.
         error = np.linalg.norm(np.dot(A, xk) - b)/norma_b
+        errores.append(error)
 
+        # Se calcula ||xk||_1 
         n1 = np.linalg.norm(xk, 1)
         
 
-         # La rutina de FISTA muestra en pantalla para cada iteracion:
+         # La rutina FW muestra en pantalla para cada iteracion:
         # nº de iteracion, valor de la funcion evaluada en el x de la iteracion,
         #  error y angulo formado por las soluciones.
         retorno_en_pantalla = [iteracion, valor_optimo, error, n1]
 #        print(f"{retorno_en_pantalla[0]: ^12d}{retorno_en_pantalla[1]: ^12f} {retorno_en_pantalla[2]: ^12f} {retorno_en_pantalla[3]: ^12f}")
         print("%12.6f %12.6f %12.6f %12.6f" % (retorno_en_pantalla[0],retorno_en_pantalla[1],retorno_en_pantalla[2],retorno_en_pantalla[3]))
 
-    return xk
+    return xk, errores
 
 if __name__ == '__main__':
     # Esto es para que simepre se generen los mismos numeros aleatorios
     np.random.seed(1000)
 
-    tau = 0.5
-    iteracion_maxima = 100
+    rho = 1000
+    iteracion_maxima = 1000
     
-    A, b = generar_datos(10, 50)
+    # Esta rutina tiene que ser reemplazada si se quiere leer 
+    # datos externos.
+    #A, b = generar_datos(300, 1500)
+    A, b = importar_excel()
     
-    xsol = LASSO_FISTA(A, b, tau, iteracion_maxima)
+    xsol, errores = FW(np.array(A), np.array(b), rho, iteracion_maxima)
     
+    import matplotlib
+    import matplotlib.pyplot as plt
 
+
+    fig, ax = plt.subplots()
+    ax.plot(range(iteracion_maxima), errores)
+
+    ax.set(xlabel='Iteracion', ylabel='Error',
+        title='Análisis de convergencia del error')
+    ax.grid()
+
+    fig.savefig("[FW] Convergencia del error.png")
+    plt.show()
